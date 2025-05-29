@@ -143,6 +143,7 @@ plt.show()
 
 
 
+'''
 
 tif_path = "/home/scosta/Insync/sergio.costa@ufma.br/Google Drive/Drive/dados/organizar_dados/tifs/mapbiomas/ilha_maranhao_2022.tif"
 # Abrir raster e pegar infos
@@ -164,10 +165,12 @@ with rasterio.open(tif_path) as src:
 # ou a maior para manter a célula quadrada, por exemplo:
 
 print (resolution)
+
 grid = regular_grid_fixed(bounds=(bounds.left, bounds.bottom, bounds.right, bounds.top),
                           resolution=0.002,
                           crs=crs)
 print ("nodata",nodata)
+print (grid.shape)
 fill(
     strategy="zonal_stats",
     vectors=grid,
@@ -200,4 +203,46 @@ grid.plot(column='zonal_majority',
 plt.title("Raster com Grid Regular")
 plt.xlabel("Longitude / X")
 plt.ylabel("Latitude / Y")
+plt.show()
+'''
+
+gdf = gpd.read_file("data/ilha_do_maranhao.zip")
+grid = regular_grid_fixed(gdf=gdf, resolution=0.005, attrs={'source': 'teste'}, crs=gdf.crs)
+
+points_gdf = gpd.read_file("data/sedes_municipios_ilha.shp")
+
+fill (
+    strategy="min_distance",
+    from_gdf=grid,
+    to_gdf=points_gdf,
+    attr_name="min_distance"
+)
+
+
+
+
+
+fig, ax = plt.subplots(figsize=(10, 10))
+
+#gdf = gdf.to_crs(grid.crs)
+
+# Realizar a interseção
+grid_recortado = gpd.overlay(grid, gdf, how='intersection')
+
+# Plotar os polígonos coloridos pelo valor de min_distance
+grid_recortado.plot(
+    column='min_distance',  # Coluna usada para coloração
+    cmap='viridis',         # Mapa de cores
+    legend=True,            # Exibir legenda
+    edgecolor="none",      # Cor das bordas
+    linewidth=0.1  ,
+    ax=ax
+)
+points_gdf.plot(ax=ax, color='red', markersize=10, label='Pontos')  # Pontos
+
+gdf.plot(ax=ax,    facecolor='none')
+
+# Título e legenda
+plt.title("Polígonos coloridos pela menor distância aos pontos")
+plt.legend()
 plt.show()
