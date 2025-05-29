@@ -1,12 +1,23 @@
 
 import dissmodel
 
+from dissmodel.core.spatial import fill
 
 import geopandas as gpd
 import numpy as np
 from shapely.geometry import box
 
 import matplotlib.pyplot as plt
+import rasterio
+
+from rasterio.plot import show
+
+def get_raster_bounds_resolution(tif_path):
+    with rasterio.open(tif_path) as src:
+        bounds: BoundingBox = src.bounds
+        res_x, res_y = src.res  # resolução espacial (tamanho da célula)
+        crs = src.crs.to_string()
+    return bounds, (res_x, res_y), 
 
 # gera celulas menores
 def regular_grid_(gdf=None, bounds=None, resolution=1000, attrs={}, crs="EPSG:29902"):
@@ -117,13 +128,76 @@ def regular_grid_fixed(gdf=None, bounds=None, resolution=1000, attrs={}, crs="EP
     grid_gdf = gpd.GeoDataFrame(data, crs=crs).set_index("id")
     return grid_gdf
 
-gdf = gpd.read_file("/home/scosta/Insync/sergio.costa@ufma.br/Google Drive/Drive/dados/shapefiles/ibge/MA_Municipios_2022.zip")
 
 # Se quiser usar limites fixos:
 #grid = regular_grid(bounds=(0, 0, 10, 10), resolution=1)
 
+'''
+gdf = gpd.read_file("/home/scosta/Insync/sergio.costa@ufma.br/Google Drive/Drive/dados/shapefiles/ibge/MA_Municipios_2022.zip")
 grid = regular_grid_fixed(gdf=gdf, resolution=1, attrs={'source': 'teste'})
 
 ax = grid.plot(edgecolor="black", facecolor="none")
 gdf.plot(ax=ax)
+plt.show()
+'''
+
+
+
+
+tif_path = "/home/scosta/Insync/sergio.costa@ufma.br/Google Drive/Drive/dados/organizar_dados/tifs/mapbiomas/ilha_maranhao_2022.tif"
+# Abrir raster e pegar infos
+with rasterio.open(tif_path) as src:
+    print(src.dtypes)
+    bounds = src.bounds
+    resolution = max(src.res)  # Maior resolução entre x e y
+    crs = src.crs.to_string()
+
+    # Ler raster para plotar
+    raster_data = src.read(1)
+    raster_transform = src.transform
+
+    affine = src.transform    # Transforma affine associada ao raster
+    nodata = 0 # src.nodata
+
+
+# Aqui você pode escolher usar res_x ou res_y para a resolução do grid,
+# ou a maior para manter a célula quadrada, por exemplo:
+
+print (resolution)
+grid = regular_grid_fixed(bounds=(bounds.left, bounds.bottom, bounds.right, bounds.top),
+                          resolution=0.002,
+                          crs=crs)
+print ("nodata",nodata)
+fill(
+    strategy="zonal_stats",
+    vectors=grid,
+    raster_data=raster_data,
+    nodata=nodata ,
+    affine=affine,
+    stats=["mean", "max", "min", "majority"],
+    prefix="zonal_"
+)
+
+
+# Plotar raster e grid juntos
+fig, ax = plt.subplots(figsize=(10,10))
+
+# Plot raster
+#show((raster_data, 1), transform=raster_transform, ax=ax, cmap="gray")
+ax.imshow(raster_data, cmap='gray', extent=[bounds.left, bounds.right, bounds.bottom, bounds.top])
+
+# Plot grid por cima (sem preenchimento, só borda)
+#grid.boundary.plot(ax=ax, edgecolor='red', linewidth=1)
+
+grid.plot(column='zonal_majority', 
+              categorical=True,       # indica que é categórico
+              legend=True,            # mostra legenda automática
+              cmap='tab20',           # colormap categórico (pode escolher outro)
+              edgecolor='none',      # cor da borda das células
+              linewidth=0.5,          # largura da borda
+              figsize=(10, 8))
+
+plt.title("Raster com Grid Regular")
+plt.xlabel("Longitude / X")
+plt.ylabel("Latitude / Y")
 plt.show()
