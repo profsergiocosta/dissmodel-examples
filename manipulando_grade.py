@@ -122,7 +122,7 @@ gdf = gpd.read_file("/home/scosta/Insync/sergio.costa@ufma.br/Google Drive/Drive
 # Se quiser usar limites fixos:
 #grid = regular_grid(bounds=(0, 0, 10, 10), resolution=1)
 
-grid = regular_grid_fixed(gdf=gdf, resolution=10, attrs={'source': 'teste'})
+grid = regular_grid_fixed(gdf=gdf, resolution=1, attrs={'source': 'teste'})
 
 ax = grid.plot(edgecolor="black", facecolor="none")
 gdf.plot(ax=ax)
