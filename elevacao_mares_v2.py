@@ -152,7 +152,7 @@ import json
 
 from libpysal.weights import W
 
-with open("/home/scosta/dev/brmangue/neighbors.json") as f:
+with open("neighbors.json") as f:
     neighbors = json.load(f)
 
 model.w_ = W(neighbors)
